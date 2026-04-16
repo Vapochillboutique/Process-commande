@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vapo'Chill — Entrée de stock</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f10;--surface:#18181b;--surface2:#222226;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+  --accent:#6ee7b7;--accent-dim:rgba(110,231,183,0.12);
+  --warn:#fbbf24;--text:#e4e4e7;--text-muted:#71717a;
+  --radius:10px;
+}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+header{padding:16px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;background:var(--surface)}
+.logo{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+header h1{font-size:16px;font-weight:600}
+header p{font-size:11px;color:var(--text-muted);margin-top:1px}
+.hdr-right{margin-left:auto;font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px 40px;max-width:500px;width:100%;text-align:center}
+.upload-icon{font-size:52px;margin-bottom:20px}
+.card h2{font-size:20px;font-weight:600;margin-bottom:10px}
+.card .subtitle{font-size:14px;color:var(--text-muted);line-height:1.6;margin-bottom:28px}
+.drop-zone{border:2px dashed var(--border2);border-radius:12px;padding:32px 20px;cursor:pointer;transition:all 0.2s;position:relative;background:var(--surface2)}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(110,231,183,0.04)}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-title{font-size:15px;font-weight:500;margin-bottom:5px}
+.dz-sub{font-size:13px;color:var(--text-muted)}
+#loading{display:none;padding:8px 0}
+.spinner{width:40px;height:40px;border-radius:50%;border:3px solid var(--border2);border-top-color:var(--accent);animation:spin 0.8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading-text{font-size:15px;font-weight:500;margin-bottom:6px}
+#loading-sub{font-size:12px;color:var(--text-muted);margin-bottom:16px}
+.prog-wrap{height:5px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.prog-bar{height:100%;background:var(--accent);border-radius:99px;width:0%;transition:width 0.4s}
+#success{display:none;padding:8px 0}
+.success-icon{font-size:48px;margin-bottom:12px}
+#success h3{font-size:17px;font-weight:600;margin-bottom:6px;color:var(--accent)}
+#success p{font-size:13px;color:var(--text-muted);margin-bottom:20px}
+.btn-new{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:var(--radius);background:var(--surface2);color:var(--text);border:1px solid var(--border2);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.btn-new:hover{background:#2d2d31}
+#error-box{display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#fca5a5;padding:12px 16px;border-radius:8px;font-size:13px;margin-top:16px;text-align:left}
+.badge{display:inline-block;margin-top:24px;background:var(--accent-dim);color:var(--accent);font-size:11px;font-weight:500;padding:4px 12px;border-radius:99px;border:1px solid rgba(110,231,183,0.2)}
+footer{padding:14px 32px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🧊</div>
+  <div>
+    <h1>Vapo'Chill — Entrée de stock</h1>
+    <p>Correspondance automatique avec le catalogue Cash Mag</p>
+  </div>
+  <div class="hdr-right">
+    <div class="dot"></div>
+    <span>{{ nb_produits }} produits Cash Mag</span>
+  </div>
+</header>
+
+<main>
+  <div class="card">
+
+    <!-- État : upload -->
+    <div id="state-upload">
+      <div class="upload-icon">📄</div>
+      <h2>Déposez votre document</h2>
+      <p class="subtitle">Facture ou bon de livraison PDF — le fichier Excel<br>avec les noms Cash Mag se télécharge automatiquement.</p>
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept=".pdf">
+        <div class="dz-title">Glisser-déposer le PDF ici</div>
+        <div class="dz-sub">ou cliquer pour sélectionner</div>
+      </div>
+      <div id="error-box"></div>
+      <div class="badge">e.tasty · Pulp Pro · bons de livraison · tous fournisseurs</div>
+    </div>
+
+    <!-- État : chargement -->
+    <div id="loading">
+      <div class="spinner"></div>
+      <div id="loading-text">Analyse en cours...</div>
+      <div id="loading-sub">Le fichier Excel va se télécharger automatiquement</div>
+      <div class="prog-wrap"><div class="prog-bar" id="prog-bar"></div></div>
+    </div>
+
+    <!-- État : succès -->
+    <div id="success">
+      <div class="success-icon">✅</div>
+      <h3>Fichier Excel téléchargé !</h3>
+      <p id="success-details"></p>
+      <button class="btn-new" onclick="resetApp()">↺ Traiter un autre document</button>
+    </div>
+
+  </div>
+</main>
+
+<footer>{{ nb_produits }} produits Cash Mag intégrés · Vapo'Chill</footer>
+
+<script>
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const files = [...e.dataTransfer.files].filter(f => f.name.toLowerCase().endsWith('.pdf'));
+  if (files.length) handleFile(files[0]);
+  else showError('Veuillez déposer un fichier PDF.');
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) handleFile(fileInput.files[0]);
+});
+
+function setState(state) {
+  document.getElementById('state-upload').style.display = state === 'upload' ? 'block' : 'none';
+  document.getElementById('loading').style.display = state === 'loading' ? 'block' : 'none';
+  document.getElementById('success').style.display = state === 'success' ? 'block' : 'none';
+}
+
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  box.textContent = '⚠ ' + msg;
+  box.style.display = 'block';
+  setState('upload');
+}
+
+function handleFile(file) {
+  document.getElementById('error-box').style.display = 'none';
+  setState('loading');
+  document.getElementById('loading-text').textContent = 'Lecture de ' + file.name + '...';
+  document.getElementById('loading-sub').textContent = 'Correspondance avec le catalogue Cash Mag...';
+
+  let pct = 5;
+  const bar = document.getElementById('prog-bar');
+  bar.style.width = '5%';
+  const interval = setInterval(() => {
+    if (pct < 80) { pct += Math.random() * 10; bar.style.width = Math.min(pct, 80) + '%'; }
+  }, 350);
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  fetch('/upload', { method: 'POST', body: formData })
+    .then(async response => {
+      clearInterval(interval);
+      bar.style.width = '100%';
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erreur serveur');
+      }
+
+      // Déclencher le téléchargement
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Récupérer le nom du fichier depuis les headers
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const nameMatch = disposition.match(/filename="?([^"]+)"?/);
+      a.download = nameMatch ? nameMatch[1] : 'entree_stock.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      setState('success');
+      document.getElementById('success-details').textContent =
+        'Le fichier "' + a.download + '" a été téléchargé dans vos téléchargements.';
+    })
+    .catch(err => {
+      clearInterval(interval);
+      showError(err.message);
+    });
+}
+
+function resetApp() {
+  fileInput.value = '';
+  document.getElementById('error-box').style.display = 'none';
+  document.getElementById('prog-bar').style.width = '0%';
+  setState('upload');
+}
+</script>
+</body>
+</html>
