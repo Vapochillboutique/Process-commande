@@ -14,18 +14,39 @@ with open(os.path.join(BASE_DIR, 'catalogue_cashmag.json'), 'r', encoding='utf-8
 
 def normalize(s):
     s = (s or '').lower()
-    for a, b in [('à','a'),('â','a'),('é','e'),('è','e'),('ê','e'),('î','i'),
-                 ('ô','o'),('û','u'),('ù','u'),('ç','c'),("'",' '),('-',' ')]:
-        s = s.replace(a, b)
+    for a, b in [('a\u0300','a'),('a\u00e2','a'),('e\u0301','e'),('e\u0300','e'),('e\u00ea','e'),
+                 ('i\u00ee','i'),('o\u00f4','o'),('u\u00fb','u'),('u\u00f9','u'),('c\u00e7','c')]:
+        s = s.replace(a[1], b)
+    s = s.replace('\u00e0','a').replace('\u00e2','a').replace('\u00e9','e').replace('\u00e8','e')
+    s = s.replace('\u00ea','e').replace('\u00ee','i').replace('\u00f4','o').replace('\u00fb','u')
+    s = s.replace('\u00f9','u').replace('\u00e7','c').replace("'",' ').replace('-',' ')
     return re.sub(r'\s+', ' ', s).strip()
+
+INDEX = {}
+for i, p in enumerate(CATALOGUE):
+    for w in set(normalize(p['libelle']).split()):
+        if len(w) > 2:
+            if w not in INDEX: INDEX[w] = []
+            INDEX[w].append(i)
+
+print(f"Catalogue: {len(CATALOGUE)} produits | Index: {len(INDEX)} mots")
 
 def find_best(produit, nic):
     qn = normalize(produit)
     qn = re.sub(r'^one taste |^pack\s+', '', qn)
     qn = re.sub(r'\s*par\s+\d+\b', '', qn).strip()
+    words = [w for w in qn.split() if len(w) > 2]
     nic_str = str(int(nic)) + 'mg' if nic and nic not in ('0','00') else ''
+    candidates = {}
+    for w in words:
+        for idx in INDEX.get(w, []):
+            candidates[idx] = candidates.get(idx, 0) + 1
+    if not candidates:
+        candidates = {i: 0 for i in range(len(CATALOGUE))}
+    top = sorted(candidates.items(), key=lambda x: -x[1])[:200]
     best, best_score = None, -1
-    for p in CATALOGUE:
+    for idx, _ in top:
+        p = CATALOGUE[idx]
         lib = normalize(p['libelle'])
         s = SequenceMatcher(None, qn, lib).ratio()
         if nic_str:
@@ -33,7 +54,6 @@ def find_best(produit, nic):
             else: s -= 0.15
         else:
             if re.search(r'\d+mg', lib) and '0mg' not in lib: s -= 0.1
-        words = [w for w in qn.split() if len(w) > 3]
         s += sum(0.05 for w in words if w in lib)
         if s > best_score:
             best_score, best = s, p
@@ -79,7 +99,7 @@ def parse_bl(text):
 def parse_facture(text):
     items = []
     for m in re.finditer(
-        r'([A-Z0-9]{6,})\s+(.+?)(?:Nicotine\s*:\s*(\d+)\s*mg[^)]*\)?\s*)?(?:0\s*%|20\s*%)\s+[\d,]+\s*€\s+(\d+)',
+        r'([A-Z0-9]{6,})\s+(.+?)(?:Nicotine\s*:\s*(\d+)\s*mg[^)]*\)?\s*)?(?:0\s*%|20\s*%)\s+[\d,]+\s*\u20ac\s+(\d+)',
         text, re.I):
         ref = m.group(1)
         produit = re.sub(r'\([^)]+\)', '', m.group(2)).strip()
@@ -103,21 +123,22 @@ def generate_excel(results, filename):
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Entrée stock"
+    ws.title = "Entree stock"
     ws.merge_cells('A1:H1')
-    ws['A1'] = f"ENTRÉE DE STOCK — {filename}"
+    ws['A1'] = f"ENTREE DE STOCK - {filename}"
     ws['A1'].font = Font(bold=True, size=12, color='FFFFFF', name='Arial')
     ws['A1'].fill = PatternFill('solid', start_color=BLEU)
     ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
     ws.row_dimensions[1].height = 22
     ok_c = sum(1 for r in results if r['statut'] == 'OK')
     ws.merge_cells('A2:H2')
-    ws['A2'] = f"{len(results)} références  |  ✓ {ok_c} OK  |  ⚠ {len(results)-ok_c} à vérifier"
+    ws['A2'] = f"{len(results)} references | OK: {ok_c} | A verifier: {len(results)-ok_c}"
     ws['A2'].font = Font(size=10, color='595959', name='Arial')
     ws['A2'].fill = PatternFill('solid', start_color='DEEAF1')
     ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
     ws.row_dimensions[2].height = 15
-    for col, h in enumerate(['#','Réf. Fournisseur','Produit Fournisseur','Nicotine','Qté','Libellé Cash Mag','ID Cash Mag','Statut'], 1):
+    for col, h in enumerate(['#','Ref Fournisseur','Produit Fournisseur','Nicotine','Qte',
+                              'Libelle Cash Mag','ID Cash Mag','Statut'], 1):
         c = ws.cell(row=3, column=col, value=h)
         c.font = Font(bold=True, color='FFFFFF', name='Arial', size=10)
         c.fill = PatternFill('solid', start_color=BLEU2)
@@ -133,10 +154,12 @@ def generate_excel(results, filename):
             c = ws.cell(row=rn, column=col, value=val)
             c.font = Font(name='Arial', size=10)
             c.border = border
-            c.alignment = Alignment(vertical='center', horizontal='center' if col in [1,4,5,7,8] else 'left')
+            c.alignment = Alignment(vertical='center',
+                                    horizontal='center' if col in [1,4,5,7,8] else 'left')
             if col == 8:
                 c.fill = PatternFill('solid', start_color=ORANGE if is_av else VERT)
-                c.font = Font(name='Arial', size=10, bold=True, color=ORANGE_TXT if is_av else VERT_TXT)
+                c.font = Font(name='Arial', size=10, bold=True,
+                              color=ORANGE_TXT if is_av else VERT_TXT)
         ws.row_dimensions[rn].height = 16
     for col, w in zip('ABCDEFGH', [4, 18, 34, 10, 6, 40, 13, 13]):
         ws.column_dimensions[col].width = w
@@ -152,7 +175,7 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload():
     if 'file' not in request.files:
-        return jsonify({'error': 'Aucun fichier reçu'}), 400
+        return jsonify({'error': 'Aucun fichier recu'}), 400
     file = request.files['file']
     if not file.filename.lower().endswith('.pdf'):
         return jsonify({'error': 'Envoyez un fichier PDF'}), 400
@@ -161,12 +184,12 @@ def upload():
         text = "\n".join(page.get_text() for page in doc)
         items = parse_doc(text)
         if not items:
-            return jsonify({'error': 'Aucune référence trouvée dans ce PDF'}), 400
+            return jsonify({'error': 'Aucune reference trouvee dans ce PDF'}), 400
         results = []
         for item in items:
             match, score = find_best(item['produit'], item['nic'])
             results.append({**item,
-                'cashMagLibelle': match['libelle'] if match else 'NON TROUVÉ',
+                'cashMagLibelle': match['libelle'] if match else 'NON TROUVE',
                 'cashMagId': str(match['id']) if match else '',
                 'score': score,
                 'statut': 'OK' if score >= 0.60 else 'A VERIFIER'})
