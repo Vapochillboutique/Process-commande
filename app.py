@@ -14,17 +14,32 @@ with open(os.path.join(BASE_DIR, 'catalogue_cashmag.json'), 'r', encoding='utf-8
 
 def normalize(s):
     s = (s or '').lower()
-    for a, b in [('a\u0300','a'),('a\u00e2','a'),('e\u0301','e'),('e\u0300','e'),('e\u00ea','e'),
-                 ('i\u00ee','i'),('o\u00f4','o'),('u\u00fb','u'),('u\u00f9','u'),('c\u00e7','c')]:
-        s = s.replace(a[1], b)
     s = s.replace('\u00e0','a').replace('\u00e2','a').replace('\u00e9','e').replace('\u00e8','e')
     s = s.replace('\u00ea','e').replace('\u00ee','i').replace('\u00f4','o').replace('\u00fb','u')
     s = s.replace('\u00f9','u').replace('\u00e7','c').replace("'",' ').replace('-',' ')
     return re.sub(r'\s+', ' ', s).strip()
 
+def extract_volume(s):
+    m = re.search(r'(\d+)\s*ml', (s or '').lower())
+    return int(m.group(1)) if m else None
+
+BRUIT = {'ultimate','sweet','edition','green','zero','classic','tabac','gourmand',
+         'by','maison','le','pod','liquide','fizz','concentre','arome',
+         'aromes','liquides','et','du','de','la','les','par','top','fill'}
+
+def get_name_words(s):
+    s = normalize(s)
+    s = re.sub(r'^pack\s+|^concentre\s+', '', s)
+    s = re.sub(r'\s*\d+\s*ml.*', '', s)
+    for marque in ['aromes et liquides','a&l','fighter fuel','pulp','cupide','savourea',
+                   'maison fuel','enfer','aspire','vaporesso','voopoo','geekvape']:
+        s = s.replace(normalize(marque), '')
+    return [w for w in s.split() if len(w) > 2 and w not in BRUIT]
+
 INDEX = {}
 for i, p in enumerate(CATALOGUE):
-    for w in set(normalize(p['libelle']).split()):
+    lib = normalize(p['libelle'])
+    for w in set(lib.split()):
         if len(w) > 2:
             if w not in INDEX: INDEX[w] = []
             INDEX[w].append(i)
@@ -32,29 +47,51 @@ for i, p in enumerate(CATALOGUE):
 print(f"Catalogue: {len(CATALOGUE)} produits | Index: {len(INDEX)} mots")
 
 def find_best(produit, nic):
-    qn = normalize(produit)
-    qn = re.sub(r'^one taste |^pack\s+', '', qn)
-    qn = re.sub(r'\s*par\s+\d+\b', '', qn).strip()
-    words = [w for w in qn.split() if len(w) > 2]
+    qn_raw = normalize(produit)
+    qn_raw = re.sub(r'^pack\s+|^concentre\s+', '', qn_raw)
+    qn_raw = re.sub(r'\s*par\s+\d+\b', '', qn_raw)
+    qn_raw = qn_raw.replace('aromes et liquides','a&l').replace('aromes liquides','a&l')
+    qn_raw = re.sub(r'\s+', ' ', qn_raw).strip()
+
+    vol_fourn = extract_volume(produit)
     nic_str = str(int(nic)) + 'mg' if nic and nic not in ('0','00') else ''
+    name_words = get_name_words(produit)
+    all_words = [w for w in qn_raw.split() if len(w) > 2]
+
     candidates = {}
-    for w in words:
+    for w in all_words + name_words:
         for idx in INDEX.get(w, []):
             candidates[idx] = candidates.get(idx, 0) + 1
     if not candidates:
         candidates = {i: 0 for i in range(len(CATALOGUE))}
-    top = sorted(candidates.items(), key=lambda x: -x[1])[:200]
+
+    top = sorted(candidates.items(), key=lambda x: -x[1])[:300]
     best, best_score = None, -1
+
     for idx, _ in top:
         p = CATALOGUE[idx]
         lib = normalize(p['libelle'])
-        s = SequenceMatcher(None, qn, lib).ratio()
+        lib_al = lib.replace('aromes et liquides','a&l')
+        s = max(SequenceMatcher(None, qn_raw, lib).ratio(),
+                SequenceMatcher(None, qn_raw, lib_al).ratio())
         if nic_str:
             if nic_str in lib: s += 0.25
-            else: s -= 0.15
+            else: s -= 0.20
         else:
-            if re.search(r'\d+mg', lib) and '0mg' not in lib: s -= 0.1
-        s += sum(0.05 for w in words if w in lib)
+            if re.search(r'\d+mg', lib) and '0mg' not in lib: s -= 0.15
+        s += sum(0.04 for w in all_words if w in lib)
+        name_hits = sum(1 for w in name_words if w in lib)
+        s += name_hits * 0.50
+        if name_words and name_hits == 0:
+            s -= 0.60
+        if vol_fourn:
+            vol_cm = extract_volume(p['libelle'])
+            if vol_cm:
+                if vol_cm == vol_fourn: s += 0.30
+                elif abs(vol_cm - vol_fourn) <= 5: s += 0.05
+                else: s -= 0.30
+            else:
+                s -= 0.10
         if s > best_score:
             best_score, best = s, p
     return best, round(best_score, 2)
