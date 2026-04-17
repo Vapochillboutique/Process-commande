@@ -1,59 +1,76 @@
-import os, re, json, io
-from flask import Flask, request, send_file
-from difflib import SequenceMatcher
+import streamlit as st
+import pandas as pd
+import json
 import fitz  # PyMuPDF
-import openpyxl
+from difflib import SequenceMatcher
+import io
 
-app = Flask(__name__)
+st.set_page_config(page_title="Vapochill - Correspondance Cash Mag", layout="wide")
+
+st.title("📦 Vapochill : Correspondance Facture ➔ Cash Mag")
 
 # Chargement du catalogue
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-catalogue_path = os.path.join(BASE_DIR, 'catalogue_cashmag.json')
-CATALOGUE = []
-if os.path.exists(catalogue_path):
-    with open(catalogue_path, 'r', encoding='utf-8') as f:
-        CATALOGUE = json.load(f)
+@st.cache_data
+def load_catalogue():
+    try:
+        with open('catalogue_cashmag.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return []
+
+catalogue = load_catalogue()
 
 def normalize(s):
     if not s: return ""
-    return re.sub(r'[^a-z0-9]', '', str(s).lower())
+    return "".join(e for e in str(s).lower() if e.isalnum())
 
-def find_best(name):
-    norm_name = normalize(name)
-    best, best_score = None, 0
-    for p in CATALOGUE:
-        lib = normalize(p.get('libelle', ''))
-        score = SequenceMatcher(None, norm_name, lib).ratio()
-        if score > best_score:
-            best_score, best = score, p
-    return best, best_score
-
-@app.route('/')
-def index():
-    return f"Serveur pret. Catalogue: {len(CATALOGUE)} produits."
-
-@app.route('/upload', methods=['POST'])
-def upload():
-    if 'file' not in request.files: return "Pas de fichier", 400
-    file = request.files['file']
-    doc = fitz.open(stream=file.read(), filetype="pdf")
-    results = []
-    for page in doc:
-        for line in page.get_text("text").split('\n'):
-            if len(line.strip()) > 10:
-                match, score = find_best(line)
-                if match and score > 0.5:
-                    results.append([line, match['libelle'], match['id']])
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.append(['Nom Facture', 'NOM CASH MAG', 'ID CASH MAG'])
-    for r in results: ws.append(r)
+def find_best_match(text, catalogue):
+    text_norm = normalize(text)
+    best_match = None
+    highest_score = 0
     
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return send_file(output, as_attachment=True, download_name='correspondance.xlsx')
+    for item in catalogue:
+        lib_norm = normalize(item.get('libelle', ''))
+        score = SequenceMatcher(None, text_norm, lib_norm).ratio()
+        if score > highest_score:
+            highest_score = score
+            best_match = item
+    return best_match, highest_score
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+# Interface de téléchargement
+uploaded_file = st.file_uploader("Glisse ta facture PDF ici", type="pdf")
+
+if uploaded_file and catalogue:
+    with st.spinner('Analyse de la facture en cours...'):
+        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+        extracted_data = []
+        
+        for page in doc:
+            lines = page.get_text("text").split('\n')
+            for line in lines:
+                line = line.strip()
+                # On filtre les lignes qui ressemblent à des produits (plus de 10 caractères)
+                if len(line) > 10 and not any(x in line.lower() for x in ['total', 'facture', 'iban', 'tva']):
+                    match, score = find_best_match(line, catalogue)
+                    if match and score > 0.5:
+                        extracted_data.append({
+                            "Produit Facture": line,
+                            "NOM À COPIER (CASH MAG)": match.get('libelle'),
+                            "ID": match.get('id'),
+                            "Fiabilité": f"{int(score*100)}%"
+                        })
+
+        if extracted_data:
+            df = pd.DataFrame(extracted_data)
+            st.success(f"{len(df)} produits identifiés !")
+            st.table(df) # Affiche le tableau directement
+            
+            # Bouton pour télécharger en Excel
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False)
+            st.download_button("📥 Télécharger le tableau Excel", output.getvalue(), "correspondance.xlsx")
+        else:
+            st.warning("Aucun produit reconnu. Vérifie que le PDF est bien une facture.")
+elif not catalogue:
+    st.error("Le fichier catalogue_cashmag.json est vide ou introuvable sur GitHub.")
