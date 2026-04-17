@@ -28,14 +28,26 @@ def load_data():
     if not os.path.exists('catalogue.csv'):
         return None
     try:
-        # On lit le fichier en sautant les lignes vides du début (environ 48)
-        raw_df = pd.read_csv('catalogue.csv', sep=None, engine='python', header=None, on_bad_lines='skip')
-        header_idx = raw_df[raw_df.apply(lambda r: r.astype(str).str.contains('Libellé').any(), axis=1)].index[0]
+        # MÉTHODE ULTRA-LÉGÈRE (Anti-Crash Mémoire)
+        header_idx = 0
+        with open('catalogue.csv', 'r', encoding='utf-8', errors='replace') as f:
+            for i, line in enumerate(f):
+                if 'Libellé' in line or 'Libelle' in line:
+                    header_idx = i
+                    break
         
-        df = pd.read_csv('catalogue.csv', sep=None, engine='python', skiprows=header_idx)
-        # Nettoyage : Retire la FIDELITE et les symboles $
-        df = df[~df['Rubrique'].str.contains('FIDÉLITÉ', na=False, case=False)]
-        df['Libellé'] = df['Libellé'].str.replace('$', '', regex=False)
+        # On lit le CSV avec le moteur standard (très rapide)
+        df = pd.read_csv('catalogue.csv', sep=',', skiprows=header_idx, on_bad_lines='skip', low_memory=True)
+        
+        # Sécurité : Si le tableau a mal lu (à cause des points-virgules de l'Excel français), on recommence avec ";"
+        if len(df.columns) < 3:
+            df = pd.read_csv('catalogue.csv', sep=';', skiprows=header_idx, on_bad_lines='skip', low_memory=True)
+
+        # Nettoyage léger et rapide
+        df = df.dropna(subset=['Rubrique', 'Libellé', '#ID']) # Retire les lignes vides
+        df = df[~df['Rubrique'].astype(str).str.contains('FIDÉLITÉ', na=False, case=False)]
+        df['Libellé'] = df['Libellé'].astype(str).str.replace('$', '', regex=False)
+        
         return df[['Libellé', '#ID', 'Rubrique']]
     except Exception as e:
         st.error(f"Erreur catalogue : {e}")
@@ -51,7 +63,7 @@ def find_match(text, df_cat):
     spec_f = extract_specs(text)
     text_norm = "".join(e for e in text.lower() if e.isalnum())
     
-    # Pré-filtrage par contenance/nicotine pour la rapidité
+    # Pré-filtrage
     temp = df_cat.copy()
     if spec_f["ml"]:
         temp = temp[temp['Libellé'].str.contains(spec_f["ml"] + "ml", case=False, na=False)]
@@ -86,12 +98,8 @@ if df_cat is not None:
                     lib, id_cm, score = find_match(line, df_cat)
                     
                     if score > 0.40:
-                        # --- NOUVELLE LOGIQUE DE STATUT ---
-                        if score >= 0.75:
-                            statut = "✅ OK"
-                        else:
-                            statut = "⚠️ À VÉRIFIER"
-                            
+                        # Les fameux feux de signalisation
+                        statut = "✅ OK" if score >= 0.75 else "⚠️ À VÉRIFIER"
                         results.append({
                             "Statut": statut,
                             "Facture": line, 
@@ -105,9 +113,6 @@ if df_cat is not None:
         if results:
             st.success("Analyse terminée !")
             res_df = pd.DataFrame(results).drop_duplicates(subset=['Facture'])
-            
-            # --- TRI AUTOMATIQUE ---
-            # On trie pour que les "À VÉRIFIER" apparaissent en haut du tableau
             res_df = res_df.sort_values(by="Statut", ascending=False)
             
             st.dataframe(res_df, use_container_width=True)
