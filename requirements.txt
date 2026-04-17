@@ -1,6 +1,4 @@
-flask
-pymupdf
-openpyxl
-gunicorn
-streamlit
-pandas
+flask==3.0.3
+pymupdf==1.24.0
+openpyxl==3.1.2
+gunicorn==22.0.0
