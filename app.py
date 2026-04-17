@@ -5,7 +5,6 @@ from difflib import SequenceMatcher
 import io
 import re
 import os
-import time
 
 # Config de la page pour le fond noir
 st.set_page_config(page_title="Vapochill Matching", layout="centered")
@@ -30,7 +29,6 @@ def load_data():
         return None
     try:
         # On lit le fichier en sautant les lignes vides du début (environ 48)
-        # On cherche la ligne d'en-tête contenant "Libellé"
         raw_df = pd.read_csv('catalogue.csv', sep=None, engine='python', header=None, on_bad_lines='skip')
         header_idx = raw_df[raw_df.apply(lambda r: r.astype(str).str.contains('Libellé').any(), axis=1)].index[0]
         
@@ -86,13 +84,32 @@ if df_cat is not None:
                 line = line.strip()
                 if len(line) > 10 and not any(x in line.lower() for x in ['total', 'tva', 'iban', 'page']):
                     lib, id_cm, score = find_match(line, df_cat)
+                    
                     if score > 0.40:
-                        results.append({"Facture": line, "NOM CASH MAG": lib, "ID": id_cm, "Score": f"{int(score*100)}%"})
+                        # --- NOUVELLE LOGIQUE DE STATUT ---
+                        if score >= 0.75:
+                            statut = "✅ OK"
+                        else:
+                            statut = "⚠️ À VÉRIFIER"
+                            
+                        results.append({
+                            "Statut": statut,
+                            "Facture": line, 
+                            "NOM CASH MAG": lib, 
+                            "ID": id_cm, 
+                            "Fiabilité": f"{int(score*100)}%"
+                        })
+                        
             progress_bar.progress((i + 1) / len(all_pages))
             
         if results:
             st.success("Analyse terminée !")
             res_df = pd.DataFrame(results).drop_duplicates(subset=['Facture'])
+            
+            # --- TRI AUTOMATIQUE ---
+            # On trie pour que les "À VÉRIFIER" apparaissent en haut du tableau
+            res_df = res_df.sort_values(by="Statut", ascending=False)
+            
             st.dataframe(res_df, use_container_width=True)
             
             output = io.BytesIO()
