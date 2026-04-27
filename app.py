@@ -1,4 +1,4 @@
-import os, re, json, io
+import os, re, json, io, uuid
 from flask import Flask, request, send_file, render_template, jsonify
 from difflib import SequenceMatcher
 import fitz
@@ -531,6 +531,10 @@ def generate_excel(results, filename):
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
+# Stockage temporaire des résultats en mémoire
+import uuid
+RESULTATS_CACHE = {}
+
 @app.route('/')
 def index():
     return render_template('index.html', nb_produits=len(CATALOGUE))
@@ -557,12 +561,31 @@ def upload():
                 'score': score,
                 'statut': 'OK' if score >= 0.65 else 'A VERIFIER'})
         fname = os.path.splitext(file.filename)[0]
-        excel = generate_excel(results, fname)
-        return send_file(excel, as_attachment=True,
-            download_name=f'entree_stock_{fname}.xlsx',
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        # Stocker en cache pour téléchargement ultérieur
+        cache_id = str(uuid.uuid4())
+        RESULTATS_CACHE[cache_id] = {'results': results, 'fname': fname}
+        ok = sum(1 for r in results if r['statut'] == 'OK')
+        av = len(results) - ok
+        return jsonify({
+            'cache_id': cache_id,
+            'fname': fname,
+            'total': len(results),
+            'ok': ok,
+            'av': av,
+            'results': results
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/download/<cache_id>')
+def download(cache_id):
+    if cache_id not in RESULTATS_CACHE:
+        return jsonify({'error': 'Session expirée, retraitez le PDF'}), 404
+    data = RESULTATS_CACHE[cache_id]
+    excel = generate_excel(data['results'], data['fname'])
+    return send_file(excel, as_attachment=True,
+        download_name=f'entree_stock_{data["fname"]}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
