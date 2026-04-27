@@ -10,42 +10,62 @@
   --bg:#0f0f10;--surface:#18181b;--surface2:#222226;
   --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
   --accent:#6ee7b7;--accent-dim:rgba(110,231,183,0.12);
-  --warn:#fbbf24;--text:#e4e4e7;--text-muted:#71717a;
-  --radius:10px;
+  --warn:#fbbf24;--text:#e4e4e7;--text-muted:#71717a;--radius:10px;
+  --ok-bg:#1a2e22;--ok-txt:#6ee7b7;--av-bg:#2e2510;--av-txt:#fbbf24;
 }
 body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
-header{padding:16px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;background:var(--surface)}
-.logo{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-header h1{font-size:16px;font-weight:600}
+header{padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--surface);flex-shrink:0}
+.logo{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+header h1{font-size:15px;font-weight:600}
 header p{font-size:11px;color:var(--text-muted);margin-top:1px}
-.hdr-right{margin-left:auto;font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+.hdr-right{margin-left:auto;font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex-shrink:0}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
-main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px 40px;max-width:500px;width:100%;text-align:center}
-.upload-icon{font-size:52px;margin-bottom:20px}
-.card h2{font-size:20px;font-weight:600;margin-bottom:10px}
-.card .subtitle{font-size:14px;color:var(--text-muted);line-height:1.6;margin-bottom:28px}
-.drop-zone{border:2px dashed var(--border2);border-radius:12px;padding:32px 20px;cursor:pointer;transition:all 0.2s;position:relative;background:var(--surface2)}
+#state-upload{display:flex;align-items:center;justify-content:center;flex:1;padding:32px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 36px;max-width:480px;width:100%;text-align:center}
+.upload-icon{font-size:48px;margin-bottom:18px}
+.card h2{font-size:19px;font-weight:600;margin-bottom:8px}
+.card .subtitle{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:24px}
+.drop-zone{border:2px dashed var(--border2);border-radius:12px;padding:28px 20px;cursor:pointer;transition:all 0.2s;position:relative;background:var(--surface2)}
 .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(110,231,183,0.04)}
 .drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.dz-title{font-size:15px;font-weight:500;margin-bottom:5px}
-.dz-sub{font-size:13px;color:var(--text-muted)}
-#loading{display:none;padding:8px 0}
+.dz-title{font-size:14px;font-weight:500;margin-bottom:4px}
+.dz-sub{font-size:12px;color:var(--text-muted)}
+#error-box{display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:13px;margin-top:14px;text-align:left}
+.badge{display:inline-block;margin-top:20px;background:var(--accent-dim);color:var(--accent);font-size:11px;font-weight:500;padding:4px 12px;border-radius:99px;border:1px solid rgba(110,231,183,0.2)}
+#state-loading{display:none;align-items:center;justify-content:center;flex:1;padding:32px}
+.loading-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 36px;max-width:380px;width:100%;text-align:center}
 .spinner{width:40px;height:40px;border-radius:50%;border:3px solid var(--border2);border-top-color:var(--accent);animation:spin 0.8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
-#loading-text{font-size:15px;font-weight:500;margin-bottom:6px}
-#loading-sub{font-size:12px;color:var(--text-muted);margin-bottom:16px}
+.loading-txt{font-size:15px;font-weight:500;margin-bottom:6px}
+.loading-sub{font-size:12px;color:var(--text-muted);margin-bottom:16px}
 .prog-wrap{height:5px;background:var(--surface2);border-radius:99px;overflow:hidden}
 .prog-bar{height:100%;background:var(--accent);border-radius:99px;width:0%;transition:width 0.4s}
-#success{display:none;padding:8px 0}
-.success-icon{font-size:48px;margin-bottom:12px}
-#success h3{font-size:17px;font-weight:600;margin-bottom:6px;color:var(--accent)}
-#success p{font-size:13px;color:var(--text-muted);margin-bottom:20px}
-.btn-new{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:var(--radius);background:var(--surface2);color:var(--text);border:1px solid var(--border2);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.15s}
+#state-results{display:none;flex-direction:column;flex:1;overflow:hidden}
+.results-header{padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+.results-title{font-size:14px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat-badge{font-size:12px;font-weight:500;padding:3px 10px;border-radius:99px;white-space:nowrap}
+.stat-ok{background:var(--ok-bg);color:var(--ok-txt)}
+.stat-av{background:var(--av-bg);color:var(--av-txt)}
+.btn-dl{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--radius);background:var(--accent);color:#0a0a0b;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;white-space:nowrap}
+.btn-dl:hover{opacity:0.85}
+.btn-new{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:var(--radius);background:var(--surface2);color:var(--text);border:1px solid var(--border2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap}
 .btn-new:hover{background:#2d2d31}
-#error-box{display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#fca5a5;padding:12px 16px;border-radius:8px;font-size:13px;margin-top:16px;text-align:left}
-.badge{display:inline-block;margin-top:24px;background:var(--accent-dim);color:var(--accent);font-size:11px;font-weight:500;padding:4px 12px;border-radius:99px;border:1px solid rgba(110,231,183,0.2)}
-footer{padding:14px 32px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);text-align:center}
+.table-wrap{flex:1;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{position:sticky;top:0;background:#1a1a1e;padding:9px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:hover{background:rgba(255,255,255,0.02)}
+tbody td{padding:9px 12px;vertical-align:middle}
+.td-num{color:var(--text-muted);font-size:11px;text-align:right;width:36px}
+.td-ref{font-size:11px;color:var(--text-muted);font-family:monospace;white-space:nowrap}
+.td-nic,.td-qty,.td-score{text-align:center;white-space:nowrap}
+.td-qty{font-weight:600}
+.td-score{font-size:11px;color:var(--text-muted)}
+.td-cashmag{font-weight:500}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+.tag-ok{background:var(--ok-bg);color:var(--ok-txt)}
+.tag-av{background:var(--av-bg);color:var(--av-txt)}
+footer{padding:10px 24px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);text-align:center;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -58,47 +78,62 @@ footer{padding:14px 32px;border-top:1px solid var(--border);font-size:11px;color
   </div>
   <div class="hdr-right">
     <div class="dot"></div>
-    <span>{{ nb_produits }} produits Cash Mag</span>
+    <span>{{ nb_produits }} produits</span>
   </div>
 </header>
 
-<main>
+<div id="state-upload">
   <div class="card">
-
-    <!-- État : upload -->
-    <div id="state-upload">
-      <div class="upload-icon">📄</div>
-      <h2>Déposez votre document</h2>
-      <p class="subtitle">Facture ou bon de livraison PDF — le fichier Excel<br>avec les noms Cash Mag se télécharge automatiquement.</p>
-      <div class="drop-zone" id="drop-zone">
-        <input type="file" id="file-input" accept=".pdf">
-        <div class="dz-title">Glisser-déposer le PDF ici</div>
-        <div class="dz-sub">ou cliquer pour sélectionner</div>
-      </div>
-      <div id="error-box"></div>
-      <div class="badge">e.tasty · Pulp Pro · bons de livraison · tous fournisseurs</div>
+    <div class="upload-icon">📄</div>
+    <h2>Déposez votre document</h2>
+    <p class="subtitle">Facture ou bon de livraison PDF — les correspondances s'affichent directement, puis téléchargez l'Excel.</p>
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".pdf">
+      <div class="dz-title">Glisser-déposer le PDF ici</div>
+      <div class="dz-sub">ou cliquer pour sélectionner</div>
     </div>
-
-    <!-- État : chargement -->
-    <div id="loading">
-      <div class="spinner"></div>
-      <div id="loading-text">Analyse en cours...</div>
-      <div id="loading-sub">Le fichier Excel va se télécharger automatiquement</div>
-      <div class="prog-wrap"><div class="prog-bar" id="prog-bar"></div></div>
-    </div>
-
-    <!-- État : succès -->
-    <div id="success">
-      <div class="success-icon">✅</div>
-      <h3>Fichier Excel téléchargé !</h3>
-      <p id="success-details"></p>
-      <button class="btn-new" onclick="resetApp()">↺ Traiter un autre document</button>
-    </div>
-
+    <div id="error-box"></div>
+    <div class="badge">LCA · LVP · Greenvillage · GFC Provap · ADNS · Grossiste Ecigarette · et plus</div>
   </div>
-</main>
+</div>
 
-<footer>{{ nb_produits }} produits Cash Mag intégrés · Vapo'Chill</footer>
+<div id="state-loading">
+  <div class="loading-card">
+    <div class="spinner"></div>
+    <div class="loading-txt" id="loading-text">Analyse en cours...</div>
+    <div class="loading-sub">Correspondance avec le catalogue Cash Mag...</div>
+    <div class="prog-wrap"><div class="prog-bar" id="prog-bar"></div></div>
+  </div>
+</div>
+
+<div id="state-results">
+  <div class="results-header">
+    <div class="results-title" id="results-title">Résultats</div>
+    <span class="stat-badge stat-ok" id="stat-ok"></span>
+    <span class="stat-badge stat-av" id="stat-av"></span>
+    <a class="btn-dl" id="btn-download" href="#">⬇ Excel</a>
+    <button class="btn-new" onclick="resetApp()">↺ Nouveau PDF</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Réf.</th>
+          <th>Produit Fournisseur</th>
+          <th>Nic.</th>
+          <th>Qté</th>
+          <th>Libellé Cash Mag</th>
+          <th>Score</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<footer>{{ nb_produits }} produits Cash Mag · Vapo'Chill</footer>
 
 <script>
 const dropZone = document.getElementById('drop-zone');
@@ -116,10 +151,10 @@ fileInput.addEventListener('change', () => {
   if (fileInput.files.length) handleFile(fileInput.files[0]);
 });
 
-function setState(state) {
-  document.getElementById('state-upload').style.display = state === 'upload' ? 'block' : 'none';
-  document.getElementById('loading').style.display = state === 'loading' ? 'block' : 'none';
-  document.getElementById('success').style.display = state === 'success' ? 'block' : 'none';
+function setState(s) {
+  document.getElementById('state-upload').style.display = s==='upload' ? 'flex' : 'none';
+  document.getElementById('state-loading').style.display = s==='loading' ? 'flex' : 'none';
+  document.getElementById('state-results').style.display = s==='results' ? 'flex' : 'none';
 }
 
 function showError(msg) {
@@ -133,56 +168,59 @@ function handleFile(file) {
   document.getElementById('error-box').style.display = 'none';
   setState('loading');
   document.getElementById('loading-text').textContent = 'Lecture de ' + file.name + '...';
-  document.getElementById('loading-sub').textContent = 'Correspondance avec le catalogue Cash Mag...';
-
   let pct = 5;
   const bar = document.getElementById('prog-bar');
   bar.style.width = '5%';
   const interval = setInterval(() => {
     if (pct < 80) { pct += Math.random() * 10; bar.style.width = Math.min(pct, 80) + '%'; }
   }, 350);
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  fetch('/upload', { method: 'POST', body: formData })
-    .then(async response => {
+  const fd = new FormData();
+  fd.append('file', file);
+  fetch('/upload', { method:'POST', body:fd })
+    .then(async r => {
       clearInterval(interval);
       bar.style.width = '100%';
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Erreur serveur');
-      }
-
-      // Déclencher le téléchargement
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      // Récupérer le nom du fichier depuis les headers
-      const disposition = response.headers.get('Content-Disposition') || '';
-      const nameMatch = disposition.match(/filename="?([^"]+)"?/);
-      a.download = nameMatch ? nameMatch[1] : 'entree_stock.xlsx';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      setState('success');
-      document.getElementById('success-details').textContent =
-        'Le fichier "' + a.download + '" a été téléchargé dans vos téléchargements.';
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Erreur serveur');
+      afficherResultats(data);
     })
-    .catch(err => {
-      clearInterval(interval);
-      showError(err.message);
-    });
+    .catch(err => { clearInterval(interval); showError(err.message); });
+}
+
+function afficherResultats(data) {
+  document.getElementById('results-title').textContent = data.fname + ' — ' + data.total + ' références';
+  document.getElementById('stat-ok').textContent = '✓ ' + data.ok + ' OK';
+  document.getElementById('stat-av').textContent = '⚠ ' + data.av + ' à vérifier';
+  document.getElementById('btn-download').href = '/download/' + data.cache_id;
+  const tbody = document.getElementById('results-body');
+  tbody.innerHTML = '';
+  data.results.forEach((r, i) => {
+    const isAv = r.statut === 'A VERIFIER';
+    const nic = (r.nic && r.nic !== '0' && r.nic !== '00') ? r.nic + 'mg' : '0mg';
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="td-num">'+(i+1)+'</td>'+
+      '<td class="td-ref">'+esc(r.ref)+'</td>'+
+      '<td>'+esc(r.produit)+'</td>'+
+      '<td class="td-nic">'+nic+'</td>'+
+      '<td class="td-qty">'+r.qty+'</td>'+
+      '<td class="td-cashmag">'+esc(r.cashMagLibelle)+'</td>'+
+      '<td class="td-score">'+r.score+'</td>'+
+      '<td><span class="tag '+(isAv?'tag-av':'tag-ok')+'">'+(isAv?'⚠ À vérifier':'✓ OK')+'</span></td>';
+    tbody.appendChild(tr);
+  });
+  setState('results');
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function resetApp() {
   fileInput.value = '';
   document.getElementById('error-box').style.display = 'none';
   document.getElementById('prog-bar').style.width = '0%';
+  document.getElementById('results-body').innerHTML = '';
   setState('upload');
 }
 </script>
