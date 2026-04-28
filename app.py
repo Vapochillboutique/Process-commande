@@ -31,7 +31,7 @@ def get_name_words(s):
     s = normalize(s)
     s = re.sub(r'^pack\s+|^concentre\s+', '', s)
     s = re.sub(r'\s*\d+\s*ml.*', '', s)
-    for marque in ['aromes et liquides','a&l','fighter fuel','pulp','cupide','savourea',
+    for marque in ['aromes et liquides','a&l','fighter fuel','pulp','cupide','savourea','unik',
                    'maison fuel','enfer','aspire','vaporesso','voopoo','geekvape',
                    'le french liquide','lemon time','fruizee','vampire vape','swoke',
                    'salt e vapor','juice heroes','liquideo','tjuice','lost vape','lostvape',
@@ -185,6 +185,8 @@ def find_best(produit, nic):
     qn_raw = re.sub(r'^pack\s+|^concentre\s+', '', qn_raw)
     qn_raw = re.sub(r'\s*par\s+\d+\b', '', qn_raw)
     qn_raw = qn_raw.replace('aromes et liquides','a&l').replace('aromes liquides','a&l')
+    qn_raw = qn_raw.replace('le petit verger','lpv').replace('petit verger','lpv')
+    qn_raw = qn_raw.replace('savourea','lpv')  # Savourea = Le Petit Verger = LPV
     qn_raw = re.sub(r'\s+', ' ', qn_raw).strip()
     vol_fourn = extract_volume(produit)
     nic_str = str(int(nic)) + 'mg' if nic and nic not in ('0','00') else ''
@@ -655,9 +657,11 @@ AIRMUST_MAP = {
 }
 
 def find_airmust_match(produit):
-    """Cherche un produit Airmust/Paperland/Le Primeur dans Cash Mag."""
+    """Cherche un produit Airmust/Paperland/Le Primeur dans Cash Mag. UNIK = AIRMUST."""
     prod_n = normalize(produit)
     prod_n = re.sub(r'\s*\d+\s*ml', '', prod_n).strip()
+    # UNIK = AIRMUST dans Cash Mag
+    prod_n = prod_n.replace('unik', 'airmust')
     for keyword, cm_search in AIRMUST_MAP.items():
         if keyword in prod_n:
             cm_words = [w for w in normalize(cm_search).split() if len(w) > 2]
