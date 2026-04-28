@@ -58,25 +58,117 @@ MANUELS = {
     normalize('Tireboulette Peche Mangue Passion'): 'tireboulette',
 }
 
+
+# ── Table de correspondances résistances fournisseur → Cash Mag ───────────────
+RESISTANCE_MAP = {
+    # GeekVape B Series → RESISTANCE NANO
+    'b series': 'resistance nano',
+    'b boost': 'resistance nano',
+    # GeekVape Z XM → RESISTANCE ZEUS SUB XM
+    'z xm': 'resistance zeus sub',
+    'zxm': 'resistance zeus sub',
+    # GeekVape Zeus Sub → RESISTANCE ZEUS SUB
+    'zeus subohm z series': 'resistance zeus sub',
+    'zeus z series': 'resistance zeus sub',
+    # Nautilus Aspire
+    'nautilus': 'resistance nautilus',
+    # PnP Voopoo
+    'pnp x': 'resistance pnp',
+    'pnp': 'resistance pnp',
+    # Luxe X Vaporesso
+    'luxe x': 'cartouche luxe x',
+    # Pixo Aspire
+    'pixo': 'cartouche pixo',
+    # Soul GeekVape
+    'soul': 'cartouche geekvape soul',
+    # Ursa Nano LostVape
+    'ursa nano': 'cartouche ursa nano',
+    'ursa v3': 'cartouche ursa nano',
+    'ursa v2': 'cartouche ursa nano',
+    # UB Max LostVape
+    'ub max': 'resistances ub max',
+    # GTX Vaporesso
+    'gtx': 'resistance gtx',
+    # Veynom Air vide
+    'veynom air': 'cartouche vide veynom aspire',
+}
+
+def extract_ohm(s):
+    """Extrait la valeur ohm d'une chaîne (ex: 0.4, 0,4, 0.4?, 0.4 ohm)"""
+    s = s.lower().replace(',','.')
+    m = re.search(r'0\.(\d{1,2})\s*(?:ohm|\?|$)', s)
+    if m: return f"0.{m.group(1)}"
+    m = re.search(r'1\.(\d{1,2})\s*(?:ohm|\?)', s)
+    if m: return f"1.{m.group(1)}"
+    m = re.search(r'(\d+\.\d+)\s*(?:ohm|\?)', s)
+    if m: return m.group(1)
+    return None
+
+def find_resistance_match(produit):
+    """Cherche la résistance/cartouche correspondante dans Cash Mag en matchant sur l'OHM."""
+    prod_low = produit.lower()
+    ohm = extract_ohm(produit)
+    
+    for keyword, cm_prefix in RESISTANCE_MAP.items():
+        if keyword in prod_low:
+            # Chercher dans le catalogue avec ce préfixe + cet ohm
+            candidates = []
+            for p in CATALOGUE:
+                lib = p['libelle'].lower()
+                if cm_prefix in lib:
+                    if ohm:
+                        # Normaliser l'ohm du catalogue (0,15 → 0.15)
+                        lib_norm = lib.replace(',','.')
+                        ohm_clean = ohm.replace('.','').lstrip('0') or '0'
+                        # Chercher l'ohm dans le libellé Cash Mag
+                        if ohm in lib_norm or ohm.replace('.','').replace(',','') in lib_norm.replace('.','').replace(',',''):
+                            candidates.append(p)
+                    else:
+                        candidates.append(p)
+            if candidates:
+                return candidates[0], 0.99
+    return None, 0
+
 print(f"Catalogue: {len(CATALOGUE)} produits | Index: {len(INDEX)} mots")
 
 def find_best(produit, nic):
-    # Vérifier correspondances manuelles d'abord
     prod_norm = normalize(produit)
+
+    # ── Résistances et cartouches : matching par OHM ──────────────────────────
+    res_match, res_score = find_resistance_match(produit)
+    if res_match:
+        return res_match, res_score
+
+    # ── Correspondances manuelles ─────────────────────────────────────────────
     for cle, valeur in MANUELS.items():
         if cle in prod_norm or prod_norm in cle:
-            # Chercher dans le catalogue
             for p in CATALOGUE:
                 if valeur in normalize(p['libelle']):
-                    # Vérifier le volume si possible
-                    vol_f = __import__('re').search(r'(\d+)\s*ml', produit.lower())
-                    vol_c = __import__('re').search(r'(\d+)\s*ml', p['libelle'].lower())
+                    vol_f = re.search(r'(\d+)\s*ml', produit.lower())
+                    vol_c = re.search(r'(\d+)\s*ml', p['libelle'].lower())
                     if vol_f and vol_c and vol_f.group(1) == vol_c.group(1):
                         return p, 0.99
                     elif not vol_f:
                         return p, 0.95
             break
-    qn_raw = normalize(produit)
+
+    # ── Cartouches Luxe X : matcher sur l'ohm exact ───────────────────────────
+    if 'luxe x' in prod_norm and 'cartouche' in prod_norm:
+        ohm_m = re.search(r'0[.,](\d)', produit)
+        if ohm_m:
+            ohm = ohm_m.group(1)
+            for p in CATALOGUE:
+                lib = normalize(p['libelle'])
+                if f'0.{ohm}ohm' in lib and 'luxe x' in lib and 'cartouche' in lib:
+                    return p, 0.99
+
+    # ── Packs Pulp 60ml → chercher 50ml dans Cash Mag ────────────────────────
+    if 'pulp' in prod_norm and '60ml' in produit.lower():
+        produit_mod = re.sub(r'60\s*ml', '50ml', produit, flags=re.I)
+        prod_norm = normalize(produit_mod)
+
+    # ── Algorithme général ────────────────────────────────────────────────────
+    qn_raw = prod_norm
     qn_raw = re.sub(r'^pack\s+|^concentre\s+', '', qn_raw)
     qn_raw = re.sub(r'\s*par\s+\d+\b', '', qn_raw)
     qn_raw = qn_raw.replace('aromes et liquides','a&l').replace('aromes liquides','a&l')
@@ -119,7 +211,6 @@ def find_best(produit, nic):
             best_score, best = s, p
     return best, round(best_score, 2)
 
-# ── Parsers ────────────────────────────────────────────────────────────────────
 
 def parse_bl(text):
     items, seen = [], set()
