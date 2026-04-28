@@ -102,14 +102,17 @@ RESISTANCE_MAP = {
 }
 
 def extract_ohm(s):
-    """Extrait la valeur ohm d'une chaîne (ex: 0.4, 0,4, 0.4?, 0.4 ohm)"""
-    s = s.lower().replace(',','.')
-    m = re.search(r'0\.(\d{1,2})\s*(?:ohm|\?|$)', s)
-    if m: return f"0.{m.group(1)}"
-    m = re.search(r'1\.(\d{1,2})\s*(?:ohm|\?)', s)
-    if m: return f"1.{m.group(1)}"
-    m = re.search(r'(\d+\.\d+)\s*(?:ohm|\?)', s)
+    """Extrait la valeur ohm précise : priorité à 'valeur :' puis dernier ohm explicite."""
+    s_low = s.lower().replace(',','.')
+    # Priorité 1 : après 'valeur :' ou '(ohm :'
+    m = re.search(r'(?:valeur|ohm)\s*:?\s*(?:dm\d+\s+)?([01]\.[0-9]{1,2})\s*(?:ohm|\?)', s_low)
     if m: return m.group(1)
+    # Priorité 2 : dernier 'X.XX ohm' explicite
+    matches = re.findall(r'([01]\.[0-9]{1,2})\s*ohm', s_low)
+    if matches: return matches[-1]
+    # Priorité 3 : dernier 'X.XX?' 
+    matches = re.findall(r'([01]\.[0-9]{1,2})\?', s_low)
+    if matches: return matches[-1]
     return None
 
 def find_resistance_match(produit):
