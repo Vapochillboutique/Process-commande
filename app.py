@@ -91,6 +91,9 @@ RESISTANCE_MAP = {
     'gtx': 'resistance gtx',
     # Veynom Air vide
     'veynom air': 'cartouche vide veynom aspire',
+    # Cartouches Apex Vaporesso (avec ohm)
+    'cartouches apex': 'cartouches apex',
+    'cartouche apex': 'cartouches apex',
     # Zenith Innokin Z Coil
     'zenith': 'resistance z coil',
     'z coil': 'resistance z coil',
