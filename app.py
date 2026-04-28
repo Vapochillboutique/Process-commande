@@ -119,23 +119,19 @@ def find_resistance_match(produit):
     
     for keyword, cm_prefix in RESISTANCE_MAP.items():
         if keyword in prod_low:
-            # Chercher dans le catalogue avec ce préfixe + cet ohm
             candidates = []
             for p in CATALOGUE:
                 lib = p['libelle'].lower()
                 if cm_prefix in lib:
                     if ohm:
-                        # Normaliser l'ohm du catalogue (0,15 → 0.15)
                         lib_norm = lib.replace(',','.')
-                        ohm_clean = ohm.replace('.','').lstrip('0') or '0'
-                        # Chercher l'ohm dans le libellé Cash Mag
-                        if ohm in lib_norm or ohm.replace('.','').replace(',','') in lib_norm.replace('.','').replace(',',''):
+                        if ohm in lib_norm:
                             candidates.append(p)
                     else:
                         candidates.append(p)
             if candidates:
-                return candidates[0], 0.99
-    return None, 0
+                return candidates[0], 0.99, ohm
+    return None, 0, None
 
 print(f"Catalogue: {len(CATALOGUE)} produits | Index: {len(INDEX)} mots")
 
@@ -143,7 +139,7 @@ def find_best(produit, nic):
     prod_norm = normalize(produit)
 
     # ── Résistances et cartouches : matching par OHM ──────────────────────────
-    res_match, res_score = find_resistance_match(produit)
+    res_match, res_score, res_ohm = find_resistance_match(produit)
     if res_match:
         return res_match, res_score
 
@@ -186,7 +182,6 @@ def find_best(produit, nic):
     qn_raw = re.sub(r'\s*par\s+\d+\b', '', qn_raw)
     qn_raw = qn_raw.replace('aromes et liquides','a&l').replace('aromes liquides','a&l')
     qn_raw = qn_raw.replace('le petit verger','lpv').replace('petit verger','lpv')
-    qn_raw = qn_raw.replace('savourea','lpv')  # Savourea = Le Petit Verger = LPV
     qn_raw = re.sub(r'\s+', ' ', qn_raw).strip()
     vol_fourn = extract_volume(produit)
     nic_str = str(int(nic)) + 'mg' if nic and nic not in ('0','00') else ''
@@ -658,6 +653,11 @@ AIRMUST_MAP = {
 
 def find_airmust_match(produit):
     """Cherche un produit Airmust/Paperland/Le Primeur dans Cash Mag. UNIK = AIRMUST."""
+    # Ne pas utiliser pour les produits LPV/Le Petit Verger/Savourea
+    prod_low = produit.lower()
+    if any(x in prod_low for x in ['petit verger', 'savourea', 'lpv', 'coq qui vape', 'fruizee',
+                                     'cupide', 'pulp', 'fighter fuel', 'maison fuel']):
+        return None, 0
     prod_n = normalize(produit)
     prod_n = re.sub(r'\s*\d+\s*ml', '', prod_n).strip()
     # UNIK = AIRMUST dans Cash Mag
@@ -822,8 +822,17 @@ def upload():
             return jsonify({'error': 'Aucune reference trouvee dans ce PDF. Fournisseur non supporte ?'}), 400
         results = []
         for item in items:
+            # Détecter si c'est une résistance/cartouche → extraire OHM
+            ohm = extract_ohm(item['produit'])
+            is_resistance = any(kw in item['produit'].lower() for kw in 
+                ['résistance','resistance','cartouche','clearomiseur'])
             match, score = find_best(item['produit'], item['nic'])
+            # Pour les résistances, afficher l'OHM au lieu de la nicotine
+            nic_display = item['nic']
+            if is_resistance and ohm:
+                nic_display = ohm + 'Ω'
             results.append({**item,
+                'nic': nic_display,
                 'cashMagLibelle': match['libelle'] if match else 'NON TROUVE',
                 'cashMagId': str(match['id']) if match else '',
                 'score': score,
