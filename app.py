@@ -139,6 +139,11 @@ def find_best(produit, nic):
     if res_match:
         return res_match, res_score
 
+    # ── Produits Airmust/Paperland/Le Primeur Fresh ────────────────────────────
+    airmust_match, airmust_score = find_airmust_match(produit)
+    if airmust_match:
+        return airmust_match, airmust_score
+
     # ── Correspondances manuelles ─────────────────────────────────────────────
     for cle, valeur in MANUELS.items():
         if cle in prod_norm or prod_norm in cle:
@@ -547,10 +552,123 @@ def parse_grossiste(text):
         i = j
     return items
 
+
+def parse_airmust(text):
+    """Airmust : ref code barre 10+3 chiffres, marque•produit, 20%, prix, qty"""
+    items, seen = [], set()
+    lines = [l.strip() for l in text.split('\n')]
+    STOP = ['Detail des taxes','Total produits','Frais','Total (HT)','Total','Airmust',
+            'Powered','Conditions','ATTENTION','Transporteur','Moyen']
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if re.match(r'^\d{10}$', line) and i+1 < len(lines) and re.match(r'^\d{3}$', lines[i+1]):
+            ref = line + lines[i+1]
+            j = i + 2
+            desc_parts = []
+            while j < len(lines):
+                nl = lines[j]
+                if nl == '20 %': break
+                if re.match(r'^\d{10}$', nl): break
+                if any(x in nl for x in STOP): break
+                desc_parts.append(nl)
+                j += 1
+            desc = ' '.join(desc_parts)
+            if j < len(lines) and lines[j] == '20 %':
+                j += 1
+                if j < len(lines) and '\u20ac' in lines[j]: j += 1
+                if j < len(lines) and '\u20ac' in lines[j]: j += 1
+            qty = 0
+            if j < len(lines) and re.match(r'^\d+$', lines[j]):
+                qty = int(lines[j]); j += 1
+            nic_m = re.search(r'[Nn]icotine\s*:\s*(\d+)\s*mg', desc)
+            nic = str(int(nic_m.group(1))) if nic_m else '0'
+            produit = re.sub(r'\s*\([Nn]icotine.*?\)', '', desc)
+            produit = re.sub(r'^(AIRMUST|Paperland|Ferox|Le Primeur Fresh)\s*[\u2022\xb7]\s*', '', produit, flags=re.I)
+            produit = produit.strip()
+            if qty > 0 and len(produit) > 2:
+                key = ref + '|' + nic
+                if key not in seen:
+                    seen.add(key)
+                    items.append({'ref': ref, 'produit': produit, 'nic': nic, 'qty': qty})
+            i = j
+        else:
+            i += 1
+    return items
+
+# Table de correspondances Airmust : nom fournisseur → nom Cash Mag
+AIRMUST_MAP = {
+    # AIRMUST/UNIK 60ml → 50ml UNIK
+    'bonbon cola': 'bonbon cola 50 ml unik',
+    'caramel fondant': 'caramel fondant 50 ml unik',
+    'cassis': 'cassis 50 ml unik',
+    'cerise intense': 'cerise intense 50 ml unik',
+    'citron givre': 'citron givre 50 ml unik',
+    'custard vanille': 'custard vanille 50 ml unik',
+    'fruit du dragon': 'fruit du dragon 50 ml unik',
+    'fruits rouges': 'fruits rouges 50 ml unik',
+    'mangue': 'mangue 50 ml unik',
+    'menthe du jardin': 'menthe du jardin 50 ml unik',
+    'menthe glaciale': 'menthe glaciale 50 ml unik',
+    'noisette authentique': 'noisette 50 ml unik',
+    'noisette': 'noisette 50 ml unik',
+    'peche': 'peche 50 ml unik',
+    'poire': 'poire 50 ml unik',
+    'pomme harmonie': 'pomme harmonie 50 ml unik',
+    'pop corn': 'popcorn 50 ml unik',
+    'popcorn': 'popcorn 50 ml unik',
+    'pure passion': 'pure passion 50 ml unik',
+    'raisin noir': 'raisin noir 50 ml unik',
+    'fraise sauvage': 'fraise 50 ml unik',
+    # Ferox → FEROX-NOM-AIRMUST
+    'aspik': 'ferox aspik airmust',
+    'hippox': 'ferox hippox airmust',
+    'grizz': 'ferox grizz airmust',
+    'konga': 'ferox konga airmust',
+    'krak': 'ferox krak airmust',
+    # Paperland 60ml → 50ml PAPERLAND
+    'berry pulse': 'berry pulse 50ml paperland',
+    'burning blue': 'burning blue 50 ml paperland',
+    'golden bless': 'golden bless 50ml paperland',
+    'green fizz': 'green fizz 50 ml paperland',
+    'navy drop': 'navy drop 50 ml paperland',
+    'peach idyll': 'peach idyll 50ml paperland',
+    'red lover': 'red lover 50 ml paperland',
+    'ruby crush': 'ruby crush 50ml paperland',
+    'white dragon': 'white dragon 50 ml paperland',
+    'yellow tropic': 'yellow tropic 50 ml paperland',
+    # Le Primeur Fresh 60ml → 50ml LE PRIMEUR
+    'ananas passion': 'ananas passion le primeur 50ml',
+    'cassis mangue': 'cassis mangue 50 ml le primeur',
+    'cassis pasteque': 'cassis pasteque le primeur 50ml',
+    'cerise groseille': 'cerise groseille le primeur 50ml',
+    'kiwi banane': 'kiwi banane le primeur 50ml',
+    'pitaya framboise': 'pitaya framboise le primeur 50ml',
+}
+
+def find_airmust_match(produit):
+    """Cherche un produit Airmust/Paperland/Le Primeur dans Cash Mag."""
+    prod_n = normalize(produit)
+    prod_n = re.sub(r'\s*\d+\s*ml', '', prod_n).strip()
+    for keyword, cm_search in AIRMUST_MAP.items():
+        if keyword in prod_n:
+            cm_words = [w for w in normalize(cm_search).split() if len(w) > 2]
+            best, best_score = None, 0
+            for p in CATALOGUE:
+                lib = normalize(p['libelle'])
+                hits = sum(1 for w in cm_words if w in lib)
+                if hits > best_score:
+                    best_score, best = hits, p
+            if best and best_score >= 2:
+                return best, 0.98
+    return None, 0
+
 def parse_doc(text):
     # Détecter le fournisseur
     if 'greenvillage' in text.lower():
         return parse_greenvillage(text)
+    if 'Airmust' in text or 'AIRMUST' in text:
+        return parse_airmust(text)
     if 'Grossiste Ecigarette' in text or 'grossiste-ecigarette' in text.lower():
         return parse_grossiste(text)
     if 'GFC Provap' in text or 'gfc-provap' in text.lower():
