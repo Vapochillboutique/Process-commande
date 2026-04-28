@@ -91,6 +91,11 @@ RESISTANCE_MAP = {
     'gtx': 'resistance gtx',
     # Veynom Air vide
     'veynom air': 'cartouche vide veynom aspire',
+    # Zenith Innokin Z Coil
+    'zenith': 'resistance z coil',
+    'z coil': 'resistance z coil',
+    # Luxe XR Vaporesso
+    'luxe xr': 'cartouche luxe xr',
 }
 
 def extract_ohm(s):
@@ -663,9 +668,56 @@ def find_airmust_match(produit):
                 return best, 0.98
     return None, 0
 
+
+def parse_greenvillage2(text):
+    """Green Village Alliance Distribution : ref 5/4XXX-XXX, (code) desc, qty, remise, montant, declinaison, px net"""
+    items, seen = [], set()
+    lines = [l.strip() for l in text.split('\n')]
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if re.match(r'^[45][A-Z]{2,4}-[A-Z0-9]+$', line):
+            ref = line
+            j = i + 1
+            desc = ''
+            if j < len(lines) and not re.match(r'^\d', lines[j]) and not re.match(r'^[45][A-Z]', lines[j]):
+                desc = lines[j]; j += 1
+            qty = 0
+            if j < len(lines) and re.match(r'^\d+,\d+$', lines[j]):
+                try: qty = int(float(lines[j].replace(',','.')))
+                except: pass
+                j += 1
+            while j < len(lines) and (re.match(r'^\d+[,\.]', lines[j]) or '%' in lines[j]):
+                j += 1
+            nic = '0'
+            if j < len(lines):
+                nic_m = re.search(r'(\d+)mg', lines[j])
+                if nic_m:
+                    nic = str(int(nic_m.group(1)))
+                    if re.search(r'\d+[.,]\d+\s*ohm', lines[j], re.I):
+                        desc += ' ' + lines[j]
+                    j += 1
+            produit = re.sub(r'^\(\w+\)\s*', '', desc)
+            produit = re.sub(r'\s*\d+mg.*$', '', produit)
+            produit = re.sub(r'\s*Concentr\u00e9/.*$', '', produit)
+            produit = re.sub(r'\s*DTL/.*$', '', produit)
+            produit = produit.strip()
+            skip = ['port', 'frais de port']
+            if qty > 0 and len(produit) > 3 and not any(s in produit.lower() for s in skip):
+                key = ref + '|' + nic
+                if key not in seen:
+                    seen.add(key)
+                    items.append({'ref': ref, 'produit': produit, 'nic': nic, 'qty': qty})
+            i = j
+        else:
+            i += 1
+    return items
+
 def parse_doc(text):
     # Détecter le fournisseur
-    if 'greenvillage' in text.lower():
+    if 'greenvillage' in text.lower() or 'green village' in text.lower():
+        if 'Alliance Distribution' in text or 'Px net u.' in text:
+            return parse_greenvillage2(text)
         return parse_greenvillage(text)
     if 'Airmust' in text or 'AIRMUST' in text:
         return parse_airmust(text)
