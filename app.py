@@ -34,7 +34,7 @@ def extract_ohm(s):
     return None
 
 BRUIT = {'ultimate','sweet','edition','green','zero','classic','tabac','gourmand',
-         'by','maison','le','pod','liquide','fizz','concentre','arome',
+         'by','maison','pod','liquide','fizz','concentre','arome',
          'aromes','liquides','et','du','de','la','les','par','top','fill','unik'}
 
 def get_name_words(s):
@@ -164,6 +164,9 @@ AIRMUST_MAP = {
 }
 
 def find_airmust_match(produit):
+    # Ne pas matcher les produits Pulp sur AIRMUST
+    if 'pulp' in produit.lower() or 'licorne' in produit.lower():
+        return None, 0
     prod_n = normalize(produit)
     prod_n = prod_n.replace('unik', 'airmust')
     prod_n = re.sub(r'\s*\d+\s*ml', '', prod_n).strip()
@@ -172,7 +175,8 @@ def find_airmust_match(produit):
             cm_words = [w for w in normalize(cm_search).split() if len(w) > 2]
             best, best_score = None, 0
             for p in CATALOGUE:
-                lib = normalize(p['libelle'])
+                # Chercher AIRMUST ou UNIK indifféremment
+                lib = normalize(p['libelle']).replace('unik', 'airmust')
                 hits = sum(1 for w in cm_words if w in lib)
                 if hits > best_score:
                     best_score, best = hits, p
