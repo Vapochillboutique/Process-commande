@@ -123,26 +123,26 @@ def find_resistance_match(produit):
 
 # ── Table Airmust/Paperland/Le Primeur ────────────────────────────────────────
 AIRMUST_MAP = {
-    'bonbon cola': 'bonbon cola 50 ml unik',
-    'caramel fondant': 'caramel fondant 50 ml unik',
-    'cassis': 'cassis 50 ml unik',
-    'cerise intense': 'cerise intense 50 ml unik',
-    'citron givre': 'citron givre 50 ml unik',
-    'custard vanille': 'custard vanille 50 ml unik',
-    'fruit du dragon': 'fruit du dragon 50 ml unik',
-    'fruits rouges': 'fruits rouges 50 ml unik',
-    'mangue': 'mangue 50 ml unik',
-    'menthe du jardin': 'menthe du jardin 50 ml unik',
-    'menthe glaciale': 'menthe glaciale 50 ml unik',
-    'noisette': 'noisette 50 ml unik',
-    'peche': 'peche 50 ml unik',
-    'poire': 'poire 50 ml unik',
-    'pomme harmonie': 'pomme harmonie 50 ml unik',
-    'pop corn': 'popcorn 50 ml unik',
-    'popcorn': 'popcorn 50 ml unik',
-    'pure passion': 'pure passion 50 ml unik',
-    'raisin noir': 'raisin noir 50 ml unik',
-    'fraise sauvage': 'fraise 50 ml unik',
+    'bonbon cola': 'bonbon cola 50 ml airmust',
+    'caramel fondant': 'caramel fondant 50 ml airmust',
+    'cassis': 'cassis 50 ml airmust',
+    'cerise intense': 'cerise intense 50 ml airmust',
+    'citron givre': 'citron givre 50 ml airmust',
+    'custard vanille': 'custard vanille 50 ml airmust',
+    'fruit du dragon': 'fruit du dragon 50 ml airmust',
+    'fruits rouges': 'fruits rouges 50 ml airmust',
+    'mangue': 'mangue 50 ml airmust',
+    'menthe du jardin': 'menthe du jardin 50 ml airmust',
+    'menthe glaciale': 'menthe glaciale 50 ml airmust',
+    'noisette': 'noisette 50 ml airmust',
+    'peche': 'peche 50 ml airmust',
+    'poire': 'poire 50 ml airmust',
+    'pomme harmonie': 'pomme harmonie 50 ml airmust',
+    'pop corn': 'popcorn 50 ml airmust',
+    'popcorn': 'popcorn 50 ml airmust',
+    'pure passion': 'pure passion 50 ml airmust',
+    'raisin noir': 'raisin noir 50 ml airmust',
+    'fraise sauvage': 'fraise 50 ml airmust',
     'aspik': 'ferox aspik airmust',
     'hippox': 'ferox hippox airmust',
     'berry pulse': 'berry pulse 50ml paperland',
@@ -168,7 +168,6 @@ def find_airmust_match(produit):
     if 'pulp' in produit.lower() or 'licorne' in produit.lower():
         return None, 0
     prod_n = normalize(produit)
-    prod_n = prod_n.replace('unik', 'airmust')
     prod_n = re.sub(r'\s*\d+\s*ml', '', prod_n).strip()
     for keyword, cm_search in AIRMUST_MAP.items():
         if keyword in prod_n:
@@ -176,7 +175,7 @@ def find_airmust_match(produit):
             best, best_score = None, 0
             for p in CATALOGUE:
                 # Chercher AIRMUST ou UNIK indifféremment
-                lib = normalize(p['libelle']).replace('unik', 'airmust')
+                lib = normalize(p['libelle'])
                 hits = sum(1 for w in cm_words if w in lib)
                 if hits > best_score:
                     best_score, best = hits, p
